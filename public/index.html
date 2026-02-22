@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Calculator</title>
+  <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Bebas+Neue&display=swap" rel="stylesheet"/>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0d0d0d;
+      font-family: 'Share Tech Mono', monospace;
+      overflow: hidden;
+    }
+
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(ellipse at 30% 20%, #1a0a2e 0%, transparent 60%),
+                  radial-gradient(ellipse at 80% 80%, #0a1a2e 0%, transparent 60%);
+      pointer-events: none;
+    }
+
+    .calc {
+      width: 320px;
+      background: #111;
+      border: 1px solid #2a2a2a;
+      border-radius: 4px;
+      box-shadow: 0 0 60px rgba(0,200,255,0.08), 0 30px 80px rgba(0,0,0,0.8);
+      overflow: hidden;
+      position: relative;
+    }
+
+    .calc::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, #00c8ff55, transparent);
+    }
+
+    .display {
+      background: #0a0a0a;
+      padding: 24px 20px 16px;
+      border-bottom: 1px solid #1e1e1e;
+      min-height: 110px;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      justify-content: flex-end;
+      gap: 6px;
+    }
+
+    .display .expression {
+      font-size: 13px;
+      color: #444;
+      min-height: 18px;
+      letter-spacing: 1px;
+      word-break: break-all;
+      text-align: right;
+    }
+
+    .display .value {
+      font-family: 'Bebas Neue', sans-serif;
+      font-size: 52px;
+      color: #e8e8e8;
+      letter-spacing: 2px;
+      line-height: 1;
+      word-break: break-all;
+      text-align: right;
+      transition: color 0.1s;
+    }
+
+    .display .value.flash {
+      color: #00c8ff;
+    }
+
+    .keys {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 1px;
+      background: #1a1a1a;
+    }
+
+    button {
+      border: none;
+      outline: none;
+      cursor: pointer;
+      font-family: 'Share Tech Mono', monospace;
+      font-size: 16px;
+      padding: 20px 0;
+      transition: background 0.1s, color 0.1s, transform 0.08s;
+      position: relative;
+      overflow: hidden;
+      letter-spacing: 1px;
+    }
+
+    button:active {
+      transform: scale(0.94);
+    }
+
+    button::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: white;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    button:active::after { opacity: 0.05; }
+
+    .btn-num {
+      background: #161616;
+      color: #ccc;
+    }
+    .btn-num:hover { background: #1e1e1e; color: #fff; }
+
+    .btn-op {
+      background: #161616;
+      color: #00c8ff;
+    }
+    .btn-op:hover { background: #1a2a30; }
+
+    .btn-fn {
+      background: #131313;
+      color: #888;
+      font-size: 13px;
+    }
+    .btn-fn:hover { background: #1a1a1a; color: #aaa; }
+
+    .btn-eq {
+      background: #00c8ff;
+      color: #000;
+      font-size: 22px;
+      font-weight: bold;
+    }
+    .btn-eq:hover { background: #33d4ff; }
+
+    .span2 { grid-column: span 2; }
+  </style>
+</head>
+<body>
+<div class="calc">
+  <div class="display">
+    <div class="expression" id="expr"></div>
+    <div class="value" id="display">0</div>
+  </div>
+  <div class="keys">
+    <button class="btn-fn" onclick="clearAll()">AC</button>
+    <button class="btn-fn" onclick="toggleSign()">+/−</button>
+    <button class="btn-fn" onclick="percent()">%</button>
+    <button class="btn-op" onclick="op('/')">÷</button>
+
+    <button class="btn-num" onclick="num('7')">7</button>
+    <button class="btn-num" onclick="num('8')">8</button>
+    <button class="btn-num" onclick="num('9')">9</button>
+    <button class="btn-op" onclick="op('*')">×</button>
+
+    <button class="btn-num" onclick="num('4')">4</button>
+    <button class="btn-num" onclick="num('5')">5</button>
+    <button class="btn-num" onclick="num('6')">6</button>
+    <button class="btn-op" onclick="op('-')">−</button>
+
+    <button class="btn-num" onclick="num('1')">1</button>
+    <button class="btn-num" onclick="num('2')">2</button>
+    <button class="btn-num" onclick="num('3')">3</button>
+    <button class="btn-op" onclick="op('+')">+</button>
+
+    <button class="btn-num span2" onclick="num('0')">0</button>
+    <button class="btn-num" onclick="dot()">.</button>
+    <button class="btn-eq" onclick="equals()">=</button>
+  </div>
+</div>
+
+<script>
+  let current = '0', prev = '', operator = null, justEvaled = false;
+
+  const disp = document.getElementById('display');
+  const expr = document.getElementById('expr');
+
+  function update(val) {
+    disp.textContent = val;
+    disp.classList.add('flash');
+    setTimeout(() => disp.classList.remove('flash'), 80);
+  }
+
+  function num(n) {
+    if (justEvaled) { current = n; justEvaled = false; }
+    else current = current === '0' ? n : current + n;
+    if (current.length > 12) current = current.slice(0, 12);
+    update(current);
+  }
+
+  function dot() {
+    if (justEvaled) { current = '0.'; justEvaled = false; }
+    else if (!current.includes('.')) current += '.';
+    update(current);
+  }
+
+  function op(o) {
+    if (operator && !justEvaled) calc();
+    prev = current;
+    operator = o;
+    justEvaled = false;
+    current = '0';
+    const syms = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+    expr.textContent = `${prev} ${syms[o]}`;
+  }
+
+  function calc() {
+    if (!operator || !prev) return;
+    const a = parseFloat(prev), b = parseFloat(current);
+    let res;
+    if (operator === '+') res = a + b;
+    else if (operator === '-') res = a - b;
+    else if (operator === '*') res = a * b;
+    else if (operator === '/') res = b === 0 ? 'Error' : a / b;
+    const syms = { '+': '+', '-': '−', '*': '×', '/': '÷' };
+    expr.textContent = `${prev} ${syms[operator]} ${current} =`;
+    current = res === 'Error' ? 'Error' : parseFloat(res.toFixed(10)).toString();
+    operator = null;
+    prev = '';
+    justEvaled = true;
+    update(current);
+  }
+
+  function equals() { calc(); }
+
+  function clearAll() {
+    current = '0'; prev = ''; operator = null; justEvaled = false;
+    expr.textContent = '';
+    update('0');
+  }
+
+  function toggleSign() {
+    if (current !== '0' && current !== 'Error')
+      current = (parseFloat(current) * -1).toString();
+    update(current);
+  }
+
+  function percent() {
+    if (current !== 'Error')
+      current = (parseFloat(current) / 100).toString();
+    update(current);
+  }
+
+  document.addEventListener('keydown', e => {
+    if (e.key >= '0' && e.key <= '9') num(e.key);
+    else if (e.key === '.') dot();
+    else if (e.key === '+') op('+');
+    else if (e.key === '-') op('-');
+    else if (e.key === '*') op('*');
+    else if (e.key === '/') { e.preventDefault(); op('/'); }
+    else if (e.key === 'Enter' || e.key === '=') equals();
+    else if (e.key === 'Escape') clearAll();
+    else if (e.key === 'Backspace') {
+      if (current.length > 1) current = current.slice(0, -1);
+      else current = '0';
+      update(current);
+    }
+  });
+</script>
+</body>
+</html>
